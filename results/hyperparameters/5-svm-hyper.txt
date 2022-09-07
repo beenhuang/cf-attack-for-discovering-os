@@ -1,0 +1,2 @@
+svm best_params_: {'svc__C': 512, 'svc__gamma': 512} 
+svm best_score_: 0.9996961490190897 

@@ -1,0 +1,2 @@
+rf best_params_: {'criterion': 'entropy', 'n_estimators': 50} 
+rf best_score_: 0.9999471563511462 
