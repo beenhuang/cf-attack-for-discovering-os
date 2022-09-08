@@ -1,0 +1,2 @@
+rf best_params_: {'criterion': 'gini', 'n_estimators': 30} 
+rf best_score_: 0.9999608482871125 
