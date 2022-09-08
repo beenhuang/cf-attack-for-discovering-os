@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import sys
 import pickle
 import warnings
@@ -91,8 +92,7 @@ def perform_over_sampling(X, y, strategy, rs):
 
     # unrecognized
     else :
-        print(f"[ERROR] unrecognized strategy : [{strategy}] ")
-        sys.exit()
+        sys.exit(f"[ERROR] unrecognized strategy : [{strategy}] ")
     
 
     return X_res, y_res
@@ -101,11 +101,11 @@ def perform_over_sampling(X, y, strategy, rs):
 # in order to find the optimal hyperparameters
 def get_optimal_hyperparams(X, y, model):
 
-    print(f"-------  get optimal hyperparams of {model} model  -------")
+    print(f"[{model.upper()}] get optimal hyperparameters")
 
     # svm
     if model == "svm" :
-        hyperparams = {'svc__C':[128, 256, 512], 'svc__gamma':[128, 256, 512]}
+        hyperparams = {'svc__C':[64, 128, 256], 'svc__gamma':[32, 64, 128]}
         pipline = Pipeline([('standardscaler', StandardScaler()), ('svc', SVC(kernel='rbf'))])
         clf = GridSearchCV(pipline, param_grid=hyperparams, n_jobs=-1, cv=5)
         clf.fit(X, y)
@@ -124,8 +124,7 @@ def get_optimal_hyperparams(X, y, model):
 
     # unrecoginized model
     else :
-        print(f"[ERROR] unrecognized classification model : [{model}] ")
-        sys.exit()
+        sys.exit(f"[ERROR] unrecognized classification model : [{model}]")
     
     # write to txt file
     lines = []
@@ -178,7 +177,7 @@ def get_70_30_split_score(X_train, X_test, y_train, y_test, clf, rs):
     return lines
 
 #
-def get_confusion_matrix_plot(X, y, clf, label):
+def get_confusion_matrix_plot(X, y, clf, label, file):
 
     cm = confusion_matrix(y, clf.predict(X))
 
@@ -187,14 +186,14 @@ def get_confusion_matrix_plot(X, y, clf, label):
     elif label == 5 :
         disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['gen','Client-IP','Client-RP','OS-IP','OS-RP'])  
     else :
-        print(f"[ERROR] unrecognized label value : [{label}] ")
-        sys.exit()
+        sys.exit(f"[ERROR] unrecognized label value : [{label}]")
 
     disp.plot()
-    plt.show()
+    #plt.show()
+    plt.savefig(os.path.join(os.getcwd(), "results", "figures", file))
 
 # 
-def run_classifier(X, y, model, rs, param1, param2, label):
+def run_classifier(X, y, model, rs, param1, param2, label, file):
 
     lines = []
 
@@ -202,21 +201,20 @@ def run_classifier(X, y, model, rs, param1, param2, label):
 
 
     if model == "svm" :
-        print(f"[SVM] C: {param1}, gamma: {param2}, random_state: {rs}")
+        print(f"[{model.upper()}] C: {param1}, gamma: {param2}, random_state: {rs}")
         clf = Pipeline([('standardscaler', StandardScaler()), ('svc', SVC(kernel='rbf', C=param1, gamma=int(param2)))])
     
     elif model == "rf" :
-        print(f"[Random-Forest] n_estimators: {param1}, criterion: {param2}, random_state: {rs}")
+        print(f"[{model.upper()}] n_estimators: {param1}, criterion: {param2}, random_state: {rs}")
         clf = RandomForestClassifier(n_estimators=param1, criterion=param2)
         
     elif model == "xgboost" :
-        print(f"[XGBoost] n_estimators: {param1}, random_state: {rs}")
+        print(f"[{model.upper()}] n_estimators: {param1}, random_state: {rs}")
         #clf = XGBClassifier(n_estimators=20, objective='binary:logistic')
         clf = XGBClassifier(n_estimators=param1)
 
     else :
-        print(f"[ERROR] unrecognized classification model : [{model}] ")
-        sys.exit()
+        sys.exit(f"[ERROR] unrecognized classification model : [{model}]")
          
 
     # [1] get cross-validation scores
@@ -226,7 +224,7 @@ def run_classifier(X, y, model, rs, param1, param2, label):
     lines.extend(get_70_30_split_score(X_train, X_test, y_train, y_test, clf, rs)) 
 
     # [3] confusion matrix plot
-    get_confusion_matrix_plot(X_test, y_test, clf, label)
+    get_confusion_matrix_plot(X_test, y_test, clf, label, file)
     
 
     return lines
@@ -234,41 +232,40 @@ def run_classifier(X, y, model, rs, param1, param2, label):
 #     
 def main():
 
-    print(f"---------  [ml.py]: start to run start to run [{args['in']}]  ---------\n")
+    print(f"---------  [{os.path.basename(__file__)}]: start to run [{args['in']}]  ---------")
 
     # [1] load the pickle file
-    with open(args["in"], "rb") as f:
+    with open(os.path.join(os.getcwd(), "feature", args["in"]), "rb") as f:
         X, y = pickle.load(f)
 
-    print(f"[LOADED] [{args['in']}] pickle file")
+    print(f"[LOADED] {args['in']} file")
 
 
     # [2] over-sampling :
     X_res, y_res = perform_over_sampling(X, y, args["sampling"], args["random_state"])
 
-    print(f"[RESAMPLED] dataset: [{Counter(y_res)}], original dataset: [{Counter(y)}]")
+    print(f"[RESAMPLED] dataset: [{Counter(y_res)}],\n\t    original dataset: [{Counter(y)}]")
 
     
-    # [3] computing
-    lines = []
-
     # [3] get optimal hyperparameters
     if args["hyper"] :
         lines = get_optimal_hyperparams(X_res, y_res, args["model"])
+        file = os.path.join(os.getcwd(), "results", "hyperparameters", args["out"]+".txt")
     
     # [3] classification
     else :    
-        lines = run_classifier(X_res, y_res, args["model"], args["random_state"], args["param1"], args["param2"], args["label"])
+        lines = run_classifier(X_res, y_res, args["model"], args["random_state"], args["param1"], args["param2"], args["label"], args["out"])
+        file = os.path.join(os.getcwd(), "results", args["out"]+".txt")
 
 
     # [4] write to *.txt file
-    with open(args["out"], "w") as f:
+    with open(file, "w") as f:
         f.writelines(lines)
 
         print(f"[SAVED] scores to the [{args['out']}] file.")
     
     
-    print(f"-------  [ml.py]: completed successfully  -------")
+    print(f"-------  [{os.path.basename(__file__)}]: completed successfully  -------\n\n")
 
 
 if __name__ == "__main__":
