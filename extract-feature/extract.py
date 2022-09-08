@@ -7,6 +7,7 @@ import pickle
 import csv
 import numpy as np
 
+
 # argument parser:
 parser = argparse.ArgumentParser()
 
@@ -17,12 +18,10 @@ parser.add_argument("--in", required=True, help="input dataset")
 parser.add_argument("--out", required=True, help="output pickle file")
 
 # 3. label: 
-parser.add_argument("--label", required=False, type=int, 
-                    default=2, help="label")
+parser.add_argument("--label", required=True, type=int, help="label")
 
 # 4. max length: the max length of cells.
-parser.add_argument("--length", required=False, type=int, 
-                    default=-1, help="max length of extracted cells")
+parser.add_argument("--length", required=True, type=int, help="max length of extracted cells")
 
 args = vars(parser.parse_args())
 
@@ -90,9 +89,9 @@ def get_one_trace_features(tag, trace, label):
         elif(tag == 'IpClient'):
             tagNum = 1
         elif(tag == 'IpHS'):
-            tagNum = 3
-        elif(tag == 'RpClient'):
             tagNum = 2
+        elif(tag == 'RpClient'):
+            tagNum = 3
         elif(tag == 'RpHS'):
             tagNum = 4        
     
@@ -106,8 +105,7 @@ def extract_features(files, label, length):
 
     # check label value :
     if label != 2 and label != 5 :
-        print(f"[ERROR] invalid label : [{args['label']}]")
-        sys.exit()
+        sys.exit(f"[ERROR] invalid label : [{args['label']}]")
 
     # check maximum number
     max = length + 4    
@@ -139,27 +137,27 @@ def extract_features(files, label, length):
                 
 
 def main():
-    print(f"-------  [extract.py]: start to run [{args['in']}]  -------")
+    print(f"-------  [{os.path.basename(__file__)}]: start to run [{args['in']}]  -------")
     
     # [1] get all trace files
-    files = get_files(args["in"])
+    files = get_files(os.path.join(os.getcwd(), args["in"]))
 
-    print(f"[LOAD] files, the length of files: [{len(files)}]")
+    print(f"[LOADED] files, the length of files: [{len(files)}]")
     
 
     # [2] extract features
     data, target = extract_features(files, args["label"], args["length"])
 
-    print(f"[GET] data&target, data length: [{len(data)}] ")
+    print(f"[GOT] data&target, data length: [{len(data)}] ")
 
 
     # [3] dump data&target to pickle file
-    with open(args["out"], "wb") as f:
+    with open(os.path.join(os.getcwd(), "feature", args["out"]), "wb") as f:
         pickle.dump((data, target), f)
 
         print(f"[SAVED] data&target to the [{args['out']}] file") 
 
-    print(f"-------  [extract.py]: completed successfully  -------")
+    print(f"-------  [{os.path.basename(__file__)}]: completed successfully  -------\n\n")
 
 
 if __name__ == "__main__":
